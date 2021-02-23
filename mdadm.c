@@ -5,11 +5,32 @@
 #include "mdadm.h"
 #include "jbod.h"
 
+uint32_t encode_operation(jbod_cmd_t cmd, int disk_num, int block_num)
+{
+
+  uint32_t op = cmd << 26 | disk_num << 22 | block_num;
+  
+  return op;
+}
+
 int mdadm_mount(void) {
+  uint32_t op = encode_operation(JBOD_MOUNT, 0, 0); // pass zero's because its default
+  int value = jbod_operation(op, NULL);
+  if (value == 0)
+    {
+      return 1;
+    }
   return -1;
+    
 }
 
 int mdadm_unmount(void) {
+  uint32_t last_op = encode_operation(JBOD_UNMOUNT,16, 256); //last command called so its on last disk, last block
+  int value = jbod_operation(last_op, NULL);
+  if (value == 0)
+    {
+      return 1;
+    }
   return -1;
 }
 
