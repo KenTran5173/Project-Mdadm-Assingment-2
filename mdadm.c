@@ -13,6 +13,19 @@ uint32_t encode_operation(jbod_cmd_t cmd, int disk_num, int block_num)
   return op;
 }
 
+void translate_address(uint32_t linear_address,
+		       int *disk_num,
+		       int *block_num,
+		       int *offset)
+{int block_remainder;
+ 
+  *disk_num = linear_address / JBOD_DISK_SIZE;
+  block_remainder = linear_address % JBOD_DISK_SIZE;
+  *block_num = block_remainder / JBOD_BLOCK_SIZE;
+  *offset = block_remainder % JBOD_BLOCK_SIZE;
+  
+}
+
 int mdadm_mount(void) {
   uint32_t op = encode_operation(JBOD_MOUNT, 0, 0); // pass zero's because its default
   int value = jbod_operation(op, NULL);
