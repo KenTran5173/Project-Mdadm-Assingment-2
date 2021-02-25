@@ -60,12 +60,23 @@ int mdadm_read(uint32_t addr, uint32_t len, uint8_t *buf) {
   translate_address(addr, &disk_num, &block_num, &offset);
   seek(disk_num, block_num);
   uint32_t op = encode_operation(JBOD_READ_BLOCK, 0, 0);
-  uint32_t buf1[]; //store data into buf1 dont know how to store it
-  jbod_operation(op, buf); //[0-255]
-  //buf1 will contain data read from the disk
-  //copy buf1 to buf
-  jbod_operation(op, buf); //[256-511] until read the whole 1024
+  uint32_t buf1[512];
+  if (len >= 1025 || (len > 0 && *buf == NULL)
+    {
+      return //fail. what should I return
+    }
+  if (addr >= (JBOD_NUM_DISKS * JBOD_DISK_SIZE)+len)//== 1 MB - 1?
+    {
+      
+    }
+  jbod_operation(op, buf1); 
+  //buf1 contains data read from the disk [0-255]
+  //memcopy buf1 into buf
+  // then read again from 256-511 until the whole 1024
+  jbod_operation(op, buf);
   //append buf1 to buf
   //use loop
   return len;
+  //buf is the data is returned from jbod_operation
+  
 }
