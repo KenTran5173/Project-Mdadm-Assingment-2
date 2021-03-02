@@ -30,16 +30,16 @@ int seek(int disk_num, int block_num)
 {
   encode_operation(JBOD_SEEK_TO_DISK, disk_num, 0);
   encode_operation(JBOD_SEEK_TO_BLOCK, 0, block_num);
-  return 0;
+  return 1;
 }
 
-  int mounted = 0; 
+int mounted = 0; 
 int mdadm_mount(void) {
   uint32_t op = encode_operation(JBOD_MOUNT, 0, 0); // pass zero's because its default
   int value = jbod_operation(op, NULL);
   if (value == 0)
     {
-      mounted = 1;
+       mounted = 1;
       return 1;
     }
   return -1;
@@ -47,10 +47,11 @@ int mdadm_mount(void) {
 }
 
 int mdadm_unmount(void) {
-  uint32_t last_op = encode_operation(JBOD_UNMOUNT,16, 256); //last command called so its on last disk, last block
+  uint32_t last_op = encode_operation(JBOD_UNMOUNT,0, 0); //last command called so its on last disk, last block
   int value = jbod_operation(last_op, NULL);
   if (value == 0)
     {
+      mounted =0;
       return 1;
     }
   return -1;
@@ -58,28 +59,29 @@ int mdadm_unmount(void) {
 
 int mdadm_read(uint32_t addr, uint32_t len, uint8_t *buf) {
   
-  //int disk_num, block_num, offset;
-  
-  //translate_address(addr, &disk_num, &block_num, &offset);
-  //seek(disk_num, block_num);
-  //uint32_t op = encode_operation(JBOD_READ_BLOCK, 0, 0);
-  // uint32_t buf1[512];
+  int disk_num, block_num, offset;
   if (len == 0 && buf == NULL)
     {
       return 0;
-    }
-
-  if (mounted != 0 || len >= 1025 || (len > 0 && buf == NULL) || addr+ len > (JBOD_NUM_DISKS * JBOD_DISK_SIZE)) //test cases
+      }
+  
+  if (mounted ==0 || len >= 1025 || (len > 0 && buf == NULL) || addr+ len > (JBOD_NUM_DISKS * JBOD_DISK_SIZE)) //test cases
   {
     return -1; 
   }
- 
-    /*
-  jbod_operation(op, buf1); 
+  
+  translate_address(addr, &disk_num, &block_num, &offset);
+  seek(disk_num, block_num);
+  uint32_t op = encode_operation(JBOD_READ_BLOCK, 0, 0);
+  uint8_t buf1[256];
+  jbod_operation(op, buf1);
+  memcpy(buf, buf1,len); //copy the len of buf 1 into buf
   //buf1 contains data read from the disk [0-255]
   //memcopy buf1 into buf
   // then read again from 256-511 until the whole 1024
-  jbod_operation(op, buf);
+  jbod_operation(op, buf1);
+  
+  
   //append buf1 to buf
   //use loop*/
   return len;
