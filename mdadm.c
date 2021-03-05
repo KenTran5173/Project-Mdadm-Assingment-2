@@ -4,7 +4,16 @@
 
 #include "mdadm.h"
 #include "jbod.h"
-
+#include <stdlib.h>
+char *help(uint8_t buf[], int length) {
+  char *p = (char *)malloc(length * 6);
+  for (int i = 0, n = 0; i < length; ++i) {
+    if (i && i % 16 == 0)
+      n += sprintf(p + n, "\n");
+    n += sprintf(p + n, "0x%02x ", buf[i]);
+  }
+  return p;
+}
 uint32_t encode_operation(jbod_cmd_t cmd, int disk_num, int block_num)
 {
 
@@ -22,9 +31,9 @@ void translate_address(uint32_t linear_address,
   *disk_num = linear_address / JBOD_DISK_SIZE;
   block_remainder = linear_address % JBOD_DISK_SIZE;
   *block_num = block_remainder / JBOD_BLOCK_SIZE;
-  *offset = block_remainder % JBOD_BLOCK_SIZE;
-  
+  *offset = block_remainder % JBOD_BLOCK_SIZE;  
 }
+
 
 int seek(int disk_num, int block_num)
 {
@@ -84,11 +93,12 @@ int mdadm_read(uint32_t addr, uint32_t len, uint8_t *buf) {
   {
     return -1; 
   }
-  int x = len;
+  int total = len;
   int data_read=0;
   int counter = 0;
   int curr_addy = addr;
-  while (x!=0){
+  int sumDR=0;
+  while (curr_addy<addr+len){
     translate_address(curr_addy, &disk_num, &block_num, &offset);
     seek(disk_num, block_num);
     uint32_t op = encode_operation(JBOD_READ_BLOCK, 0, 0);
@@ -97,27 +107,25 @@ int mdadm_read(uint32_t addr, uint32_t len, uint8_t *buf) {
     
    if (counter == 0) //first block bc current block is equal to first block num             
     {
-      printf("first block: %d, %d\n", data_read, offset);
       memcpy(buf+data_read, buf1+offset, min((JBOD_BLOCK_SIZE - offset),len));
       counter += 1; //increments the counter so not in first block anymore                      
     }
-   else if (x < JBOD_BLOCK_SIZE)//last block, read whats left of the data by doing len subtract all the data read so far}
+   else if (total < JBOD_BLOCK_SIZE)//last block, read whats left of the data by using x
     {
-      //offset = 0;
-      printf("second block: %d, %d\n", data_read, offset);
-      memcpy(buf+data_read, buf1+offset, x);
+      memcpy(buf+sumDR, buf1, total);
     }
   else
-    {
-      //offset = 0;
-      printf("third block: %d, %d\n", data_read, offset);
+    { 
       memcpy(buf+data_read, buf1, JBOD_BLOCK_SIZE); //middle blocks, so read full block size. offset is zero, new block
     }
-   //in new blpck, but offset still the same
-     data_read = JBOD_BLOCK_SIZE - offset;//sets y to what was read so we can add it to buf
-     x = x - min(x,data_read);//decrements length
+     data_read = JBOD_BLOCK_SIZE - offset;//sets data_read to what was read already so we can add it to buf
+     sumDR = sumDR + data_read;
+   
+     total = total - min(total,data_read);//keeps track of the bytes left to read
      curr_addy = curr_addy + (JBOD_BLOCK_SIZE-offset);
   }
-  
   return len;
 }
+
+
+
