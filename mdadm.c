@@ -103,31 +103,18 @@ int mdadm_read(uint32_t addr, uint32_t len, uint8_t *buf) {
     translate_address(curr_addy, &disk_num, &block_num, &offset);
     seek(disk_num, block_num);
     uint32_t op = encode_operation(JBOD_READ_BLOCK, 0, 0);
-    
-    jbod_operation(op, buf1);
-    char *out = help(buf1,256);
-    printf("buf that i read:\n got:\n%s\n", out);
-    printf("disk num: %d\nblock num: %d\noffset: %d\n", disk_num, block_num, offset); 
+    jbod_operation(op,buf1);
    if (counter == 0) //first block bc current block is equal to first block num      
     {
-      //printf("\nfirst block:\ndata read: %d\noffset: %d\nlen: %d\n", data_read, offset, min((JBOD_BLOCK_SIZE - offset),len));
-      //char *out = help(buf1,256);
-      //printf("buf that i read:\n got:\n%s\n", out);
-      //printf("disk num: %d\nblock num: %d\n", disk_num, block_num);
+      
       memcpy(buf+sumDR, buf1+offset, min((JBOD_BLOCK_SIZE - offset),len));
       data_read = min((JBOD_BLOCK_SIZE - offset),len);
-      //char *out_s = help(buf,len);
-      //printf("failed:\n got:\n%s\n", out_s);
+    
       counter += 1; //increments the counter so not in first block anymore
       //if last block, then disk + 1 to go to next disk  	
     }
    else if (total < JBOD_BLOCK_SIZE)//last block, read whats left of the data by using x
     {
-      //printf("\nlast block:\ndata read: %d\noffset: %d\nlen: %d\n", sumDR, offset, total);
-      //char *out = help(buf1,256);
-      //printf("buf that i read:\n got:\n%s\n", out);
-
-      //printf("disk num: %d\nblock num: %d\n", disk_num, block_num);
       
       memcpy(buf+sumDR, buf1, total);
       data_read = total;
@@ -135,13 +122,12 @@ int mdadm_read(uint32_t addr, uint32_t len, uint8_t *buf) {
     }
   else
     {
-      //printf("\nmiddle block:\ndata read: %d\noffset: %d\nlen: %d\n", data_read, offset, JBOD_BLOCK_SIZE);
+    
       memcpy(buf+sumDR, buf1, JBOD_BLOCK_SIZE); //middle blocks, so read full block size. offset is zero, new block
       data_read = JBOD_BLOCK_SIZE;
       
     }
-  //data_read = JBOD_BLOCK_SIZE - offset;//sets data_read to what was read already so we can add it to buf
-     printf("data read before adding: %d\n", data_read);
+ 
      sumDR = sumDR + data_read;
      total = total - data_read;//keeps track of the bytes left to read
      curr_addy = curr_addy + data_read;
